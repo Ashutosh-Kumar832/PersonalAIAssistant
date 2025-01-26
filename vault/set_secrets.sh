@@ -11,6 +11,7 @@ if ! curl -s $VAULT_ADDR/v1/sys/health | grep -q '"initialized":true'; then
 fi
 
 # Add the OpenAI API key to the Vault
-vault kv put secrets/openai openai_key="your_openai_api_key"
+read -p "Enter your OpenAI API key: " OPENAI_API_KEY
+vault kv put secrets/openai openai_key="$OPENAI_API_KEY"
 
 echo "OpenAI API key stored in Vault."
