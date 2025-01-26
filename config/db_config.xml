@@ -1,0 +1,9 @@
+<database>
+    <postgresql>
+        <url>localhost</url>
+        <port>5432</port>
+        <name>task_manager</name>
+        <username>task_user</username>
+        <password>securepassword</password>
+    </postgresql>
+</database>
