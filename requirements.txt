@@ -9,3 +9,4 @@ psycopg2-binary==2.9.10
 hvac==2.3.0
 openai==1.60.1
 psycopg2==2.9.10
+psutil==6.1.1
