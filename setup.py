@@ -5,7 +5,6 @@ import shutil
 import socket
 import subprocess
 import psutil
-import time
 
 
 def check_python_version():
@@ -18,9 +17,7 @@ def check_python_version():
 
 
 def stop_process_on_port(port):
-    """
-    Check if a port is in use and stop the process using it.
-    """
+    """Check if a port is in use and stop the process using it."""
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             if s.connect_ex(("localhost", port)) == 0:
@@ -47,8 +44,6 @@ def install_requirements():
     try:
         subprocess.run(
             [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
             check=True,
         )
         print("Dependencies installed successfully.")
@@ -85,34 +80,70 @@ def install_vault():
     except subprocess.CalledProcessError:
         print("Error installing Vault. Please install it manually.")
         sys.exit(1)
-
-
-def setup_vault(api_key):
-    """Set up Vault and store the OpenAI API key."""
-    print("Starting Vault setup...")
+        
+def persist_root_token(root_token):
+    """Save the Vault root token to a file."""
+    token_file = os.path.join("vault", "root_token.txt")
+    os.makedirs(os.path.dirname(token_file), exist_ok=True)
+    with open(token_file, "w") as file:
+        file.write(root_token)
+    print(f"Root token saved to {token_file}")
+    
+def start_vault_and_get_root_token():
+    """Start the Vault server and capture the root token."""
+    print("Starting Vault server...")
     vault_process = subprocess.Popen(
         ["vault", "server", "-dev"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
     )
-    try:
-        # Wait for Vault to initialize
-        print("Waiting for Vault to initialize...")
-        time.sleep(5)
 
-        print("Storing API key in Vault...")
-        subprocess.run(
-            ["vault", "kv", "put", "secret/openai", f"api_key={api_key}"],
-            check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
+    root_token = None
+    while True:
+        line = vault_process.stdout.readline()
+        if "Root Token:" in line:
+            root_token = line.split("Root Token:")[1].strip()
+            print(f"Captured Root Token: {root_token}")
+            break
+
+        if vault_process.poll() is not None:
+            raise VaultException("Vault server failed to start.")
+
+    return root_token
+
+def delete_root_token_after_process_start():
+    root_token_path = "vault/root_token.txt"
+    if os.path.exists(root_token_path):
+        os.remove(root_token_path)
+        print("Root token file deleted for security.")
+    else:
+        print("Root token file not found. It might have already been deleted.")
+
+def store_api_key_in_vault(root_token, api_key):  # sourcery skip: extract-method
+    """Store the OpenAI API key in Vault using the root token."""
+    os.environ["VAULT_ADDR"] = "http://127.0.0.1:8200"
+    os.environ["VAULT_TOKEN"] = root_token
+
+    try:
+        # Create a policy for accessing the API key
+        policy = """
+        path "secret/data/openai" {
+          capabilities = ["read", "create", "update"]
+        }
+        """
+        with open("openai-policy.hcl", "w") as f:
+            f.write(policy)
+
+        subprocess.run(["vault", "policy", "write", "openai-policy", "openai-policy.hcl"], check=True)
+        os.remove("openai-policy.hcl")
+
+        # Store the API key in Vault
+        subprocess.run(["vault", "kv", "put", "secret/openai", f"api_key={api_key}"], check=True)
         print("API key stored in Vault successfully.")
-    except subprocess.CalledProcessError:
-        print("Error storing API key in Vault. Ensure the Vault server is running.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error storing API key in Vault: {e}")
         sys.exit(1)
-    finally:
-        vault_process.terminate()
 
 
 def install_postgres():
@@ -130,6 +161,38 @@ def install_postgres():
     print("PostgreSQL setup complete.")
 
 
+def run_database_setup():
+    """Run the database_tools/setup_database.py script to initialize the database."""
+    print("Setting up the database...")
+    database_setup_script = os.path.join("database_tools", "setup_database.py")
+    if not os.path.exists(database_setup_script):
+        print(f"Error: {database_setup_script} script not found.")
+        sys.exit(1)
+
+    try:
+        subprocess.run(
+            [sys.executable, database_setup_script],
+            check=True
+        )
+        print("Database setup completed successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error running database setup: {e}")
+        sys.exit(1)
+
+
+def start_application():
+    """Start the FastAPI application."""
+    try:
+        print("Starting the FastAPI application...")
+        subprocess.Popen(
+            ["uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000", "--reload"],
+        )
+        print("FastAPI application started at http://127.0.0.1:8000")
+    except Exception as e:
+        print(f"Error starting FastAPI application: {e}")
+        sys.exit(1)
+
+
 def main():
     print("Initializing setup...")
 
@@ -142,14 +205,25 @@ def main():
         print("API key cannot be empty. Please enter a valid OpenAI API key:")
         api_key = input("> ").strip()
 
-    stop_process_on_port(8200) 
-    stop_process_on_port(8000) 
-    install_vault()  
-    install_postgres()  
-    setup_vault(api_key)  
+    stop_process_on_port(8200)
+    stop_process_on_port(8000)
+
+    install_vault()
+    root_token = start_vault_and_get_root_token()
+    persist_root_token(root_token)
+    store_api_key_in_vault(root_token, api_key)
+    delete_root_token_after_process_start()
+
+    install_postgres()
+    run_database_setup()
+    start_application()
 
     print("Setup complete. Vault and PostgreSQL are ready to use.")
 
 
 if __name__ == "__main__":
     main()
+    
+    
+class VaultException(Exception):
+    pass
