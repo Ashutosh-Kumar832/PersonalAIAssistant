@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from database_tools.models import Task
 from database_tools.schemas import TaskCreate, TaskResponse
-from app.services import process_command
+from app.services import process_command, delete_root_token_after_process_start
 
 app = FastAPI()
 
@@ -11,6 +11,9 @@ app = FastAPI()
 async def add_task(command: str, db: Session = Depends(get_db)):
     """Add a new task based on the given command."""
     task_data = process_command(command)
+    
+    # Now lets delete the root file.
+    delete_root_token_after_process_start()
 
     if "error" in task_data:
         raise HTTPException(status_code=400, detail=task_data["error"])

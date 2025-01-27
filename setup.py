@@ -112,14 +112,6 @@ def start_vault_and_get_root_token():
 
     return root_token
 
-def delete_root_token_after_process_start():
-    root_token_path = "vault/root_token.txt"
-    if os.path.exists(root_token_path):
-        os.remove(root_token_path)
-        print("Root token file deleted for security.")
-    else:
-        print("Root token file not found. It might have already been deleted.")
-
 def store_api_key_in_vault(root_token, api_key):  # sourcery skip: extract-method
     """Store the OpenAI API key in Vault using the root token."""
     os.environ["VAULT_ADDR"] = "http://127.0.0.1:8200"
@@ -212,7 +204,6 @@ def main():
     root_token = start_vault_and_get_root_token()
     persist_root_token(root_token)
     store_api_key_in_vault(root_token, api_key)
-    delete_root_token_after_process_start()
 
     install_postgres()
     run_database_setup()

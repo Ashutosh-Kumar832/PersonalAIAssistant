@@ -1,7 +1,8 @@
-from vault.fetch_secrets import fetch_openai_key
+from vault.fetch_secrets import fetch_openai_key, TOKEN_FILE
 import openai
 import logging
 import json
+import os
 import logging
 from pydantic import ValidationError
 from database_tools.schemas import TaskCreate
@@ -12,6 +13,13 @@ logging.basicConfig(level=logging.DEBUG)
 print(fetch_openai_key())
 openai.api_key = fetch_openai_key()
 
+def delete_root_token_after_process_start():
+    if os.path.exists(TOKEN_FILE):
+        os.remove(TOKEN_FILE)
+        logging.debug("Root token file deleted for security.")
+    else:
+        print("Root token file not found. It might have already been deleted.")
+        
 def process_command(command: str) -> dict:
     """Process user input using GPT-4 and handle both JSON and plain text."""
     try:
