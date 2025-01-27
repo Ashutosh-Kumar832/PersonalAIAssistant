@@ -8,11 +8,20 @@ from app.services import process_command
 app = FastAPI()
 
 @app.post("/tasks", response_model=TaskResponse)
-async def add_task(task: TaskCreate, db: Session = Depends(get_db)):
-    """Add a new task."""
-    task_data = process_command(task.command)
-    if not task_data:
-        raise HTTPException(status_code=400, detail="Invalid command.")
+async def add_task(command: str, db: Session = Depends(get_db)):
+    """Add a new task based on the given command."""
+    task_data = process_command(command)
+
+    if "error" in task_data:
+        raise HTTPException(status_code=400, detail=task_data["error"])
+
+    # Check if the response is plain text and return it as a message
+    if "plain_text" in task_data:
+        return {"message": task_data["plain_text"]}
+
+    # Handle JSON response for task creation
+    if not task_data.get("description"):
+        raise HTTPException(status_code=400, detail="Invalid task details from the command.")
 
     new_task = Task(
         description=task_data["description"],
