@@ -96,9 +96,9 @@ No manual changes are required unless your PostgreSQL setup uses custom credenti
 
 - After the Vault root token is used for the first time, it is saved in `vault/root_token.txt`. For security, delete this file:
 
-        ```bash
-        rm vault/root_token.txt
-        ```
+  ```bash
+  rm vault/root_token.txt
+  ```
 - As a part of macOS/linux, the handling of root_token is handled by default deletion mechanism.
 
 ---
