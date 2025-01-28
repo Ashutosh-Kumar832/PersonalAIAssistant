@@ -27,7 +27,8 @@ This project provides a personal task management assistant powered by **FastAPI*
     To set up and run the application:
 
     ```bash
-    python3 setup.py
+    python3 setup.py (linux/ macOS).
+    python setup.py (Windows).
 
 # What the Script Will Do
 
