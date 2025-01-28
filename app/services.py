@@ -47,6 +47,38 @@ def parse_natural_language_date(date_str: str) -> str:
     logging.warning(f"Could not parse due_date: {date_str}")
     return None
 
+def fallback_parse_command(command: str) -> dict:
+    """
+    A fallback parser to extract details if GPT fails.
+
+    Args:
+        command (str): The user's command.
+
+    Returns:
+        dict: Extracted task details.
+    """
+    try:
+        parts = command.split(",")
+        description = parts[0].strip()
+        due_date = None
+        recurrence = None
+
+        # Parse due_date from the command
+        for part in parts:
+            if "on" in part or "by" in part:
+                due_date = parse_natural_language_date(part.strip())
+            elif any(freq in part for freq in ["daily", "weekly", "monthly"]):
+                recurrence = part.strip().lower()
+
+        return {
+            "description": description,
+            "due_date": due_date,
+            "recurrence": recurrence,
+        }
+    except Exception as e:
+        logging.error(f"Fallback parsing failed: {e}")
+        return {}
+
 def process_command(command: str) -> dict:
     """Process user input using GPT and handle JSON/validation errors."""
     try:
@@ -59,7 +91,7 @@ def process_command(command: str) -> dict:
                         "You are a task management assistant. "
                         "Always respond in JSON format like this: "
                         '{"description": "...", "due_date": "...", "background": true/false, "recurrence": "daily/weekly/monthly"}. '
-                        "Ensure valid JSON in your responses."
+                        "Ensure valid JSON in your responses. If information is missing, suggest fixes."
                     ),
                 },
                 {"role": "user", "content": command},
@@ -89,10 +121,18 @@ def process_command(command: str) -> dict:
 
     except json.JSONDecodeError:
         logging.error("Invalid JSON format received. Falling back to plain text response.")
-        return {"error": "Unable to parse the response from OpenAI. Please rephrase your command."}
+        return fallback_parse_command()
     except ValidationError as e:
         logging.error(f"Validation error: {e}")
-        return {"error": f"Validation failed: {e.errors()}"}
+        missing_fields = [error['loc'][0] for error in e.errors()]
+        suggestions = suggest_missing_fields(parsed_content)
+
+        return {
+            "error": "Validation failed.",
+            "missing_fields": missing_fields,
+            "suggestions": suggestions,
+            "message": "Please provide the missing details."
+        }
     except Exception as e:
         logging.error(f"Unexpected error while processing command: {e}")
         return {"error": str(e)}
@@ -106,9 +146,8 @@ def generate_recurring_tasks(task: Task, recurrence: str, db: Session, occurrenc
     }
     if recurrence not in rules:
         raise ValueError(f"Unsupported recurrence: {recurrence}")
-
     dates = list(rrule(rules[recurrence], dtstart=task.due_date, count=occurrences))
-    for date in dates[1:]:  # Skip the first, as it's the original task
+    for date in dates[1:]:  
         new_task = Task(
             description=task.description,
             due_date=date,
@@ -118,3 +157,16 @@ def generate_recurring_tasks(task: Task, recurrence: str, db: Session, occurrenc
         )
         db.add(new_task)
     db.commit()
+    
+def suggest_missing_fields(parsed_content: dict) -> dict:
+    """Suggest fixes for missing fields."""
+    suggestions = {}
+    if not parsed_content.get("description"):
+        suggestions["description"] = "What should the task be about?"
+    if not parsed_content.get("due_date"):
+        suggestions["due_date"] = "When is the deadline? (e.g., tomorrow, next week)"
+    if not parsed_content.get("recurrence"):
+        suggestions["recurrence"] = "Is this a recurring task? (daily, weekly, monthly)"
+
+    return suggestions
+

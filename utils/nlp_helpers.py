@@ -31,5 +31,6 @@ def parse_command(command: str) -> dict:
     description = re.sub(r"(on|by)\s+\S+", "", command).strip()
     return {
         "description": description,
-        "due_date": due_date.isoformat() if due_date else None
+        "due_date": due_date.isoformat() if due_date else None,
+        "recurrence": None
     }
