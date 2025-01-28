@@ -12,3 +12,4 @@ psycopg2==2.9.10
 psutil==6.1.1
 celery==5.4.0
 redis==5.2.1
+parsedatetime==2.6

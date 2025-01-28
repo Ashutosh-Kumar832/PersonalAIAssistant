@@ -1,13 +1,14 @@
 import psycopg2
 from psycopg2 import sql
+import getpass
 
 DB_HOST = "localhost"
 DB_PORT = 5432
 DB_NAME = "task_manager"
 DB_USER = "task_user"
 DB_PASSWORD = "securepassword"
-ADMIN_USER = "{whoami}"  # incase of macOS/linux ; Windows - enter postgres
-ADMIN_PASSWORD = None    # incase of macOS/linux ; Windows - enter postgres  
+ADMIN_USER = getpass.getuser()  # incase of macOS/linux ; Windows - enter postgres
+ADMIN_PASSWORD = None           # incase of macOS/linux ; Windows - enter postgres  
 
 def initialize_database():
     try:
@@ -61,7 +62,8 @@ def initialize_database():
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             description TEXT NOT NULL,
             due_date DATE,
-            status VARCHAR(50) DEFAULT 'pending'
+            status VARCHAR(50) DEFAULT 'pending',
+            priority INT DEFAULT 0
         );
         """)
 

@@ -8,6 +8,7 @@ class TaskResponse(BaseModel):
     description: str
     due_date: Optional[datetime] = None
     status: str
+    priority: int
 
     class Config:
         from_attributes = True  # Correct the config for Pydantic v2
@@ -15,11 +16,13 @@ class TaskResponse(BaseModel):
 class TaskCreate(BaseModel):
     description: str
     due_date: Optional[datetime] = None
+    priority: int = 0
 
     class Config:
         schema_extra = {
             "example": {
                 "description": "Complete the project",
-                "due_date": "2025-01-27T21:22:48.077Z"
+                "due_date": "2025-01-27T21:22:48.077Z",
+                "priority": 1
             }
         }

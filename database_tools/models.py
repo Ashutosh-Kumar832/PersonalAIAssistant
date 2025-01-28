@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, UUID
+from sqlalchemy import Column, String, DateTime, UUID, Integer
 from sqlalchemy.ext.declarative import declarative_base
 import uuid
 
@@ -10,3 +10,4 @@ class Task(Base):
     description = Column(String, nullable=False)
     due_date = Column(DateTime, nullable=True)
     status = Column(String, default="pending")
+    priority = Column(Integer, default=0)

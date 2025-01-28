@@ -51,6 +51,54 @@ def install_requirements():
         print("Error installing dependencies. Check your requirements.txt.")
         sys.exit(1)
 
+def run_redis_setup():
+    """Run the Redis installation and setup script."""
+    print("Setting up Redis...")
+    redis_setup_script = "./install_redis.sh"
+    if not os.path.exists(redis_setup_script):
+        print(f"Error: {redis_setup_script} script not found.")
+        sys.exit(1)
+
+    if not os.access(redis_setup_script, os.X_OK):
+        os.chmod(redis_setup_script, 0o755)
+
+    try:
+        subprocess.run(["bash", redis_setup_script], check=True)
+        print("Redis setup completed successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error during Redis setup: {e}")
+        sys.exit(1)
+
+def start_redis():
+    """Start Redis server."""
+    print("Checking for Redis installation...")
+    redis_path = shutil.which("redis-server")
+
+    if not redis_path:
+        print("Error: Redis is not installed. Please install Redis and try again.")
+        sys.exit(1)
+
+    print("Starting Redis server...")
+    try:
+        subprocess.Popen(["redis-server"])
+        print("Redis server started successfully on port 6379.")
+    except Exception as e:
+        print(f"Error starting Redis server: {e}")
+        sys.exit(1)
+        
+def start_celery_worker():
+    """Start the Celery worker."""
+    try:
+        print("Starting the Celery worker...")
+        subprocess.Popen(
+            ["celery", "-A", "utils.background_tasks.celery_app", "worker", "--loglevel=info"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        print("Celery worker started successfully.")
+    except Exception as e:
+        print(f"Error starting Celery worker: {e}")
+        sys.exit(1)
 
 def install_vault():
     """Check if Vault is installed and install if necessary."""
@@ -112,7 +160,7 @@ def start_vault_and_get_root_token():
 
     return root_token
 
-def store_api_key_in_vault(root_token, api_key):  # sourcery skip: extract-method
+def store_api_key_in_vault(root_token, api_key):
     """Store the OpenAI API key in Vault using the root token."""
     os.environ["VAULT_ADDR"] = "http://127.0.0.1:8200"
     os.environ["VAULT_TOKEN"] = root_token
@@ -152,7 +200,6 @@ def install_postgres():
     subprocess.run(["bash", postgres_script], check=True)
     print("PostgreSQL setup complete.")
 
-
 def run_database_setup():
     """Run the database_tools/setup_database.py script to initialize the database."""
     print("Setting up the database...")
@@ -170,7 +217,6 @@ def run_database_setup():
     except subprocess.CalledProcessError as e:
         print(f"Error running database setup: {e}")
         sys.exit(1)
-
 
 def start_application():
     """Start the FastAPI application."""
@@ -199,18 +245,21 @@ def main():
 
     stop_process_on_port(8200)
     stop_process_on_port(8000)
+    stop_process_on_port(6379)  
 
     install_vault()
     root_token = start_vault_and_get_root_token()
     persist_root_token(root_token)
     store_api_key_in_vault(root_token, api_key)
 
+    run_redis_setup()
+    start_redis()
     install_postgres()
     run_database_setup()
     start_application()
+    start_celery_worker()
 
-    print("Setup complete. Vault and PostgreSQL are ready to use.")
-
+    print("Setup complete. Vault, Redis, and PostgreSQL are ready to use.")
 
 if __name__ == "__main__":
     main()
