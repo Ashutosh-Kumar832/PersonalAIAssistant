@@ -19,7 +19,7 @@ This project provides a personal task management assistant powered by **FastAPI*
 1. **Clone the repository**:
 
    ```bash
-   git clone <repository_url>
+   git clone [<repository_url>](https://github.com/Ashutosh-Kumar832/PersonalAIAssistant/tree/main)
    cd PersonalAIAssistant
 
 2. **Run the Setup Script**
