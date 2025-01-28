@@ -10,11 +10,10 @@ DB_URL = (
     f"@{db_config['DB_URL']}:{db_config['DB_PORT']}/{db_config['DB_NAME']}"
 )
 
-# SQLAlchemy Setup
+# DB - Engine setup session
 engine = create_engine(DB_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Dependency for FastAPI routes
 def get_db():
     db = SessionLocal()
     try:
