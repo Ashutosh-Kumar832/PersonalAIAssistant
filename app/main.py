@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
+from app.services import generate_recurring_tasks
 from database_tools.models import Task
 from database_tools.schemas import TaskCreate, TaskResponse
 from app.services import process_command, delete_root_token_after_process_start
@@ -121,3 +122,27 @@ async def delete_task(task_id: str, db: Session = Depends(get_db)):
     db.delete(task)
     db.commit()
     return {"detail": "Task deleted successfully"}
+
+@app.post("/tasks", response_model=TaskResponse)
+async def add_task(command: str, db: Session = Depends(get_db)):
+    task_data = process_command(command)
+
+    if not task_data or "error" in task_data:
+        raise HTTPException(status_code=400, detail=task_data.get("error", "Invalid command"))
+
+    new_task = Task(
+        description=task_data["description"],
+        due_date=task_data.get("due_date"),
+        status="pending",
+        priority=task_data.get("priority", 0),
+        recurrence=task_data.get("recurrence"),
+    )
+    db.add(new_task)
+    db.commit()
+    db.refresh(new_task)
+
+    if new_task.recurrence:
+        generate_recurring_tasks(new_task, new_task.recurrence, db)
+
+    return new_task
+
