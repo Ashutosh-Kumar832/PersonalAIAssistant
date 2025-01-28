@@ -6,7 +6,11 @@ import os
 import parsedatetime
 from pydantic import ValidationError
 from database_tools.schemas import TaskCreate
+from database_tools.models import Task
 from datetime import datetime, timedelta
+from dateutil.rrule import rrule, DAILY, WEEKLY, MONTHLY
+from sqlalchemy.orm import Session
+
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -32,7 +36,7 @@ def parse_natural_language_date(date_str: str) -> str:
     cal = parsedatetime.Calendar()
     time_struct, parse_status = cal.parse(date_str)
     
-    if parse_status == 1:  # Successfully parsed
+    if parse_status == 1: 
         parsed_date = datetime(*time_struct[:6])
         # Check if the parsed date is in the past and adjust if necessary
         if parsed_date < datetime.now():
@@ -54,7 +58,7 @@ def process_command(command: str) -> dict:
                     "content": (
                         "You are a task management assistant. "
                         "Always respond in JSON format like this: "
-                        '{"description": "...", "due_date": "...", "background": true/false}. '
+                        '{"description": "...", "due_date": "...", "background": true/false, "recurrence": "daily/weekly/monthly"}. '
                         "Ensure valid JSON in your responses."
                     ),
                 },
@@ -76,6 +80,11 @@ def process_command(command: str) -> dict:
 
         # Validate using TaskCreate schema
         validated_task = TaskCreate(**parsed_content)
+        
+        # Additional validation for recurrence (already handled by schema)
+        if validated_task.recurrence and validated_task.recurrence not in ["daily", "weekly", "monthly"]:
+            raise ValueError(f"Invalid recurrence value: {validated_task.recurrence}")
+
         return validated_task.dict()
 
     except json.JSONDecodeError:
@@ -87,3 +96,25 @@ def process_command(command: str) -> dict:
     except Exception as e:
         logging.error(f"Unexpected error while processing command: {e}")
         return {"error": str(e)}
+    
+def generate_recurring_tasks(task: Task, recurrence: str, db: Session, occurrences: int = 10):
+    """Generate recurring tasks based on recurrence."""
+    rules = {
+        "daily": DAILY,
+        "weekly": WEEKLY,
+        "monthly": MONTHLY,
+    }
+    if recurrence not in rules:
+        raise ValueError(f"Unsupported recurrence: {recurrence}")
+
+    dates = list(rrule(rules[recurrence], dtstart=task.due_date, count=occurrences))
+    for date in dates[1:]:  # Skip the first, as it's the original task
+        new_task = Task(
+            description=task.description,
+            due_date=date,
+            status=task.status,
+            priority=task.priority,
+            recurrence=task.recurrence,
+        )
+        db.add(new_task)
+    db.commit()
