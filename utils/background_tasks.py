@@ -1,6 +1,7 @@
 import os
 import time
 from celery import Celery
+from celery.result import AsyncResult
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from database_tools.models import Task
@@ -30,3 +31,12 @@ def process_task_in_background(task_id: str):
         print(f"Error processing task {task_id}: {e}")
     finally:
         session.close()
+        
+def get_task_status(task_id: str) -> dict:
+    """Get the status of a Celery background task."""
+    result = AsyncResult(task_id, app=celery_app)
+    return {
+        "task_id": task_id,
+        "status": result.status,
+        "result": result.result if result.successful() else None,
+    }

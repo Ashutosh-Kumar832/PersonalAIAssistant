@@ -5,7 +5,7 @@ from app.services import generate_recurring_tasks
 from database_tools.models import Task
 from database_tools.schemas import TaskCreate, TaskResponse
 from app.services import process_command, delete_root_token_after_process_start
-from utils.background_tasks import process_task_in_background
+from utils.background_tasks import process_task_in_background, get_task_status
 from typing import List, Optional
 from datetime import datetime
 
@@ -146,3 +146,20 @@ async def add_task(command: str, db: Session = Depends(get_db)):
 
     return new_task
 
+@app.get("/tasks/{task_id}/status")
+async def get_background_task_status(task_id: str):
+    """
+    Retrieve the status of a background task.
+    Args:
+        task_id (str): Celery task ID.
+
+    Returns:
+        dict: Task status and result.
+    """
+    try:
+        status = get_task_status(task_id)
+        if not status:
+            raise HTTPException(status_code=404, detail=f"Task {task_id} not found.")
+        return status
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
