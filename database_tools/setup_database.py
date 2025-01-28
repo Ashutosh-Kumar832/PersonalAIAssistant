@@ -6,8 +6,8 @@ DB_PORT = 5432
 DB_NAME = "task_manager"
 DB_USER = "task_user"
 DB_PASSWORD = "securepassword"
-ADMIN_USER = "ashutoshkumar"  
-ADMIN_PASSWORD = None  
+ADMIN_USER = "{whoami}"  # incase of macOS/linux ; Windows - enter postgres
+ADMIN_PASSWORD = None    # incase of macOS/linux ; Windows - enter postgres  
 
 def initialize_database():
     try:
