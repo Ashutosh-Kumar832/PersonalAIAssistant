@@ -1,28 +1,30 @@
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
-from uuid import UUID  # Import UUID type
+from uuid import UUID  
 
 class TaskResponse(BaseModel):
-    id: UUID  # Change from str to UUID
+    id: UUID  
     description: str
     due_date: Optional[datetime] = None
     status: str
     priority: int
 
     class Config:
-        from_attributes = True  # Correct the config for Pydantic v2
+        from_attributes = True
 
 class TaskCreate(BaseModel):
-    description: str
+    description: Optional[str] = None
     due_date: Optional[datetime] = None
-    priority: int = 0
+    status: Optional[str] = None
+    priority: Optional[int] = None
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
-                "description": "Complete the project",
-                "due_date": "2025-01-27T21:22:48.077Z",
-                "priority": 1
+                "description": "Complete the quarterly report",
+                "due_date": "2025-02-01T10:00:00Z",
+                "status": "pending",
+                "priority": 1,
             }
         }
