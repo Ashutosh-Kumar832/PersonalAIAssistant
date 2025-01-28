@@ -37,15 +37,7 @@ def parse_natural_language_date(date_str: str) -> str:
     return None
 
 def process_command(command: str) -> dict:
-    """
-    Process user input using GPT and handle both JSON and plain text responses.
-
-    Args:
-        command (str): User command.
-
-    Returns:
-        dict: Parsed task details or error information.
-    """
+    """Process user input using GPT and handle JSON/validation errors."""
     try:
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
@@ -81,10 +73,10 @@ def process_command(command: str) -> dict:
 
     except json.JSONDecodeError:
         logging.error("Invalid JSON format received. Falling back to plain text response.")
-        return {"error": "Invalid JSON format from OpenAI."}
+        return {"error": "Unable to parse the response from OpenAI. Please rephrase your command."}
     except ValidationError as e:
         logging.error(f"Validation error: {e}")
-        return {"error": "Validation error in task details."}
+        return {"error": f"Validation failed: {e.errors()}"}
     except Exception as e:
         logging.error(f"Unexpected error while processing command: {e}")
         return {"error": str(e)}
