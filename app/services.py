@@ -6,7 +6,7 @@ import os
 import parsedatetime
 from pydantic import ValidationError
 from database_tools.schemas import TaskCreate
-from datetime import datetime
+from datetime import datetime, timedelta
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -31,8 +31,15 @@ def parse_natural_language_date(date_str: str) -> str:
     """
     cal = parsedatetime.Calendar()
     time_struct, parse_status = cal.parse(date_str)
+    
     if parse_status == 1:  # Successfully parsed
-        return datetime(*time_struct[:6]).isoformat()
+        parsed_date = datetime(*time_struct[:6])
+        # Check if the parsed date is in the past and adjust if necessary
+        if parsed_date < datetime.now():
+            logging.warning(f"Parsed date {parsed_date} is in the past. Adjusting...")
+            parsed_date += timedelta(days=7)  # Add a week to ensure a future date
+        return parsed_date.isoformat()
+    
     logging.warning(f"Could not parse due_date: {date_str}")
     return None
 
