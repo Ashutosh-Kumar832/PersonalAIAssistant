@@ -54,17 +54,16 @@ async def get_tasks(
     db: Session = Depends(get_db),
     status: Optional[str] = Query(None, description="Filter by task status"),
     priority: Optional[int] = Query(None, description="Filter by task priority"),
-    start_date: Optional[datetime] = Query(None, description="Filter by tasks due after this date"),
-    end_date: Optional[datetime] = Query(None, description="Filter by tasks due before this date"),
+    start_date: Optional[datetime] = Query(None, description="Filter tasks due after this date"),
+    end_date: Optional[datetime] = Query(None, description="Filter tasks due before this date"),
     page: int = Query(1, description="Page number"),
     page_size: int = Query(10, description="Number of tasks per page"),
     sort_by: Optional[str] = Query("due_date", description="Sort tasks by this field"),
     sort_order: Optional[str] = Query("asc", description="Sort order (asc or desc)"),
-):
-    """Retrieve tasks with optional filters, pagination, and sorting."""
+    ):
+    """Retrieve all tasks with optional filters, pagination, and sorting."""
     query = db.query(Task)
 
-    # Apply filters
     if status:
         query = query.filter(Task.status == status)
     if priority is not None:
@@ -74,17 +73,14 @@ async def get_tasks(
     if end_date:
         query = query.filter(Task.due_date <= end_date)
 
-    # Apply sorting
     if sort_order == "desc":
         query = query.order_by(getattr(Task, sort_by).desc())
     else:
         query = query.order_by(getattr(Task, sort_by).asc())
 
-    # Apply pagination
     total_tasks = query.count()
     tasks = query.offset((page - 1) * page_size).limit(page_size).all()
 
-    # Return results
     return tasks
 
 # Endpoint: Retrieve a specific task by ID
@@ -146,6 +142,7 @@ async def add_task(command: str, db: Session = Depends(get_db)):
 
     return new_task
 
+# Endpoint: get status of backgroundtask...
 @app.get("/tasks/{task_id}/status")
 async def get_background_task_status(task_id: str):
     """
