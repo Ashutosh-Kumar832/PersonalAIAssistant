@@ -8,7 +8,7 @@ DB_NAME = "task_manager"
 DB_USER = "task_user"
 DB_PASSWORD = "securepassword"
 ADMIN_USER = getpass.getuser()  # macOS/Linux: use current user; Windows: use "postgres"
-ADMIN_PASSWORD = None           # macOS/Linux: None; Windows: enter PostgreSQL password
+ADMIN_PASSWORD = None           # macOS/Linux: None; Windows: enter PostgreSQL password -> "postgres"
 
 def initialize_database():
     try:
