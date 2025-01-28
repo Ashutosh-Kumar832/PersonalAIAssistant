@@ -8,7 +8,7 @@ This project provides a personal task management assistant powered by **FastAPI*
 
 ### Prerequisites
 
-1. **Python 3.8 or higher** (see [Download Python](#https://www.python.org/downloads/)).
+1. **Python 3.8 or higher** (see [Download Python](https://www.python.org/downloads/)).
 2. **Vault** installed (Windows users only—see [Installing Vault on Windows](#installing-vault-on-windows)).
 3. An **OpenAI API key** (see [Getting Your OpenAI API Key](#getting-your-openai-api-key)).
 
