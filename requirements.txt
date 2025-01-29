@@ -13,3 +13,7 @@ psutil==6.1.1
 celery==5.4.0
 redis==5.2.1
 parsedatetime==2.6
+apscheduler==3.11.0
+google-api-python-client==2.160.0 
+google-auth-httplib2==0.2.0
+google-auth-oauthlib==1.2.1
