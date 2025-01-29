@@ -62,7 +62,7 @@ async def get_tasks(
     sort_order: Optional[str] = Query("asc", description="Sort order (asc or desc)"),
     ):
     """Retrieve all tasks with optional filters, pagination, and sorting."""
-    query = db.query(Task)
+    query = db.query(Task).filter(Task.deleted_at == None)
 
     if status:
         query = query.filter(Task.status == status)
@@ -110,14 +110,15 @@ async def update_task(task_id: str, task_update: TaskCreate, db: Session = Depen
 # Endpoint: Delete a task
 @app.delete("/tasks/{task_id}")
 async def delete_task(task_id: str, db: Session = Depends(get_db)):
-    """Delete a task."""
+    """Soft - Delete a task."""
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
+    task.deleted_at = datetime.utcnow()
     db.delete(task)
     db.commit()
-    return {"detail": "Task deleted successfully"}
+    return {"detail": "Task marked as deleted."}
 
 @app.post("/tasks", response_model=TaskResponse)
 async def add_task(command: str, db: Session = Depends(get_db)):
