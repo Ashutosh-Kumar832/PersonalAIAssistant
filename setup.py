@@ -131,7 +131,7 @@ def install_vault():
         
 def persist_root_token(root_token):
     """Save the Vault root token to a file."""
-    token_file = os.path.join("vault", "root_token.txt")
+    token_file = os.path.join("config", "root_token.txt")
     os.makedirs(os.path.dirname(token_file), exist_ok=True)
     with open(token_file, "w") as file:
         file.write(root_token)

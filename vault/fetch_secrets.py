@@ -2,7 +2,7 @@ import os
 import hvac
 
 VAULT_URL = "http://127.0.0.1:8200"
-TOKEN_FILE = os.path.join("vault", "root_token.txt")
+TOKEN_FILE = os.path.join("config", "root_token.txt")
 
 
 def get_root_token():  # sourcery skip: raise-from-previous-error
