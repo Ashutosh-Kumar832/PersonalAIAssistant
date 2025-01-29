@@ -6,6 +6,7 @@ from database_tools.models import Task
 from database_tools.schemas import TaskCreate, TaskResponse
 from app.services import process_command, delete_root_token_after_process_start
 from utils.background_tasks import process_task_in_background, get_task_status
+from utils.scheduler import start_scheduler
 from typing import List, Optional
 from datetime import datetime
 
@@ -161,3 +162,7 @@ async def get_background_task_status(task_id: str):
         return status
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.on_event("startup")
+async def startup_event():
+    start_scheduler()
