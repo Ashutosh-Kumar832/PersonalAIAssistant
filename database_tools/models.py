@@ -14,3 +14,4 @@ class Task(Base):
     recurrence = Column(String(50), nullable=True)  
     celery_task_id = Column(String(255), nullable=True)
     deleted_at = Column(DateTime, nullable=True)
+    archived_at = Column(DateTime, nullable=True)

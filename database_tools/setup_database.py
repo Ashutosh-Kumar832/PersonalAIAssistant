@@ -23,17 +23,21 @@ def initialize_database():
         conn.autocommit = True
         cur = conn.cursor()
 
-        # Create database
-        cur.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(DB_NAME)))
-        print(f"Database '{DB_NAME}' created successfully.")
+        # Create database if not exists
+        cur.execute(f"SELECT 1 FROM pg_database WHERE datname = '{DB_NAME}'")
+        if not cur.fetchone():
+            cur.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(DB_NAME)))
+            print(f"Database '{DB_NAME}' created successfully.")
 
-        # Create user
-        cur.execute(
-            sql.SQL("CREATE USER {} WITH PASSWORD %s")
-            .format(sql.Identifier(DB_USER)),
-            [DB_PASSWORD]
-        )
-        print(f"User '{DB_USER}' created successfully.")
+        # Create user if not exists
+        cur.execute(f"SELECT 1 FROM pg_roles WHERE rolname = '{DB_USER}'")
+        if not cur.fetchone():
+            cur.execute(
+                sql.SQL("CREATE USER {} WITH PASSWORD %s")
+                .format(sql.Identifier(DB_USER)),
+                [DB_PASSWORD]
+            )
+            print(f"User '{DB_USER}' created successfully.")
 
         # Grant privileges
         cur.execute(
@@ -64,30 +68,30 @@ def initialize_database():
             due_date DATE,
             status VARCHAR(50) DEFAULT 'pending',
             priority INT DEFAULT 0,
-            recurrence VARCHAR(50),                 
-            celery_task_id VARCHAR(255)             
+            recurrence VARCHAR(50),
+            celery_task_id VARCHAR(255)
         );
         """)
 
-        # Check and add columns if they don't exist (for incremental updates)
-        cur.execute("""
-        DO $$
-        BEGIN
-            IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns 
-                WHERE table_name='tasks' AND column_name='recurrence'
-            ) THEN
-                ALTER TABLE tasks ADD COLUMN recurrence VARCHAR(50);
-            END IF;
-            
-            IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns 
-                WHERE table_name='tasks' AND column_name='celery_task_id'
-            ) THEN
-                ALTER TABLE tasks ADD COLUMN celery_task_id VARCHAR(255);
-            END IF;
-        END $$;
-        """)
+        # Check and add missing columns
+        columns_to_add = [
+            ("deleted_at", "TIMESTAMP NULL"),
+            ("archived_at", "TIMESTAMP NULL")
+        ]
+
+        for column, datatype in columns_to_add:
+            cur.execute(f"""
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name='tasks' AND column_name='{column}'
+                ) THEN
+                    ALTER TABLE tasks ADD COLUMN {column} {datatype};
+                    RAISE NOTICE 'Added missing column: {column}';
+                END IF;
+            END $$;
+            """)
 
         conn.commit()
         print("Table 'tasks' created/updated successfully.")
