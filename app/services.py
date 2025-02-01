@@ -109,6 +109,10 @@ def process_command(command: str) -> dict:
         # Convert natural language dates to ISO format
         if "due_date" in parsed_content and parsed_content["due_date"]:
             parsed_content["due_date"] = parse_natural_language_date(parsed_content["due_date"])
+            
+        # Convert "none" recurrence to None
+        if "recurrence" in parsed_content and parsed_content["recurrence"] == "none":
+            parsed_content["recurrence"] = None  
 
         # Validate using TaskCreate schema
         validated_task = TaskCreate(**parsed_content)
