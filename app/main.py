@@ -37,11 +37,16 @@ async def add_task(command: str, db: Session = Depends(get_db)):
         description=task_data["description"],
         due_date=task_data.get("due_date"),
         status="pending",
-        priority=task_data.get("priority", 0),  # Default priority to 0
+        priority=task_data.get("priority", 0),
+        recurrence=task_data.get("recurrence"),
     )
     db.add(new_task)
     db.commit()
     db.refresh(new_task)
+    
+    # Generate recurring tasks if applicable
+    if new_task.recurrence:
+        generate_recurring_tasks(new_task, new_task.recurrence, db)
 
     # Send long-running tasks to Celery worker
     if "background" in task_data and task_data["background"]:
@@ -74,10 +79,11 @@ async def get_tasks(
     if end_date:
         query = query.filter(Task.due_date <= end_date)
 
-    if sort_order == "desc":
-        query = query.order_by(getattr(Task, sort_by).desc())
-    else:
-        query = query.order_by(getattr(Task, sort_by).asc())
+    if hasattr(Task, sort_by):
+        if sort_order == "desc":
+            query = query.order_by(getattr(Task, sort_by).desc())
+        else:
+            query = query.order_by(getattr(Task, sort_by).asc())
 
     total_tasks = query.count()
     tasks = query.offset((page - 1) * page_size).limit(page_size).all()
@@ -117,7 +123,6 @@ async def delete_task(task_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Task not found")
 
     task.deleted_at = datetime.utcnow()
-    db.delete(task)
     db.commit()
     return {"detail": "Task marked as deleted."}
 
@@ -146,7 +151,7 @@ async def add_task(command: str, db: Session = Depends(get_db)):
 
 # Endpoint: get status of backgroundtask...
 @app.get("/tasks/{task_id}/status")
-async def get_background_task_status(task_id: str):
+async def get_background_task_status(task_id: str, db: Session = Depends(get_db)):
     """
     Retrieve the status of a background task.
     Args:
@@ -155,6 +160,10 @@ async def get_background_task_status(task_id: str):
     Returns:
         dict: Task status and result.
     """
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail=f"Task {task_id} does not exist in the database.")
+
     try:
         status = get_task_status(task_id)
         if not status:
@@ -162,6 +171,19 @@ async def get_background_task_status(task_id: str):
         return status
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.post("/tasks/{task_id}/restore")
+async def restore_task(task_id: str, db: Session = Depends(get_db)):
+    """Restore a soft-deleted task."""
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if task.deleted_at is None:
+        raise HTTPException(status_code=400, detail="Task is not deleted, cannot restore")
+
+    task.deleted_at = None
+    db.commit()
+    return {"message": f"Task {task_id} restored successfully"}
     
 @app.on_event("startup")
 async def startup_event():
