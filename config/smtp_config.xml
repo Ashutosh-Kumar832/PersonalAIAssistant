@@ -1,0 +1,7 @@
+<smtp>
+    <server>smtp.gmail.com</server>
+    <port>587</port>
+    <username>your-email@example.com</username>
+    <password>your-email-password</password>
+    <use_tls>true</use_tls>
+</smtp>
